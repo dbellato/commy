@@ -98,6 +98,9 @@
     "aiSearchIndexName": {
       "value": "${AZURE_AI_SEARCH_INDEX_NAME=index_sample}"
     },
+    "aiSearchIndexNameSpecs": {
+      "value": "${AZURE_AI_SEARCH_INDEX_NAME_SPECS=index_sample}"
+    },
     "enableAzureMonitorTracing": {
       "value": "${ENABLE_AZURE_MONITOR_TRACING=false}"
     },

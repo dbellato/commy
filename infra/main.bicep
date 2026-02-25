@@ -404,6 +404,7 @@ output AZURE_EXISTING_AIPROJECT_RESOURCE_ID string = projectResourceId
 output AZURE_AI_CHAT_DEPLOYMENT_NAME string = chatDeploymentName
 output AZURE_AI_EMBED_DEPLOYMENT_NAME string = embeddingDeploymentName
 output AZURE_AI_SEARCH_INDEX_NAME string = aiSearchIndexName
+output AZURE_AI_SEARCH_INDEX_NAME_SPECS string = aiSearchIndexNameSpecs
 output AZURE_AI_SEARCH_ENDPOINT string = searchServiceEndpoint
 output AZURE_AI_EMBED_DIMENSIONS string = embeddingDeploymentDimensions
 output AZURE_EXISTING_AIPROJECT_ENDPOINT string = projectEndpoint

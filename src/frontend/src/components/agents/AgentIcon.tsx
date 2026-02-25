@@ -21,7 +21,8 @@ export interface IAgentIconProps {
 }
 
 export function AgentIcon({
-  iconName = "Avatar_Default.svg",
+  //iconName = "Avatar_Default.svg",
+  iconName = "Commy.svg",
   iconClassName,
   alt = "",
 }: IAgentIconProps): ReactNode {

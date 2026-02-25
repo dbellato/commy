@@ -4,14 +4,17 @@ import { ThemeProvider } from "./core/theme/ThemeProvider";
 const App: React.FC = () => {
   // State to store the agent details
   const agentDetails ={
-      id: "chatbot",
+      // id: "chatbot",
+      // object: "chatbot",
+      // name: "Chatbot",
+      id: "commy",
       object: "chatbot",
+      name: "Commy",
       created_at: Date.now(),
-      name: "Chatbot",
-      description: "This is a sample chatbot.",
+      description: "This is commy, the Comacchio AI Agent.",
       model: "default",
       metadata: {
-        logo: "Avatar_Default.svg",
+        logo: "Commy.svg",
       },
   };
 

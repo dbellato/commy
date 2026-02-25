@@ -42,6 +42,10 @@ var env = [
     value: aiSearchIndexName
   }
   {
+    name: 'AZURE_AI_SEARCH_INDEX_NAME_SPECS'
+    value: aiSearchIndexNameSpecs
+  }
+  {
     name: 'AZURE_AI_EMBED_DIMENSIONS'
     value: embeddingDeploymentDimensions
   }

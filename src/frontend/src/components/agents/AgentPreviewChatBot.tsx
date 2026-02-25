@@ -29,7 +29,7 @@ export function AgentPreviewChatBot({
   };
 
   const isEmpty = messageListFromChatContext.length === 0;
-
+  
   return (
     <div
       className={clsx(
@@ -65,13 +65,16 @@ export function AgentPreviewChatBot({
         // Empty div needed for proper animation when transitioning to non-empty state
         <div />
       )}
-      <div className={styles.inputContainer}>
-        <ChatInput
-          currentUserMessage={currentUserMessage}
-          isGenerating={chatContext.isResponding}
-          onSubmit={chatContext.onSend}
-        />
-      </div>
+      {/* 🔒 Input only visible after topic is chosen */}
+      {chatContext.topic && (
+        <div className={styles.inputContainer}>
+          <ChatInput
+            currentUserMessage={currentUserMessage}
+            isGenerating={chatContext.isResponding}
+            onSubmit={chatContext.onSend}
+          />
+        </div>
+      )}
     </div>
   );
 }

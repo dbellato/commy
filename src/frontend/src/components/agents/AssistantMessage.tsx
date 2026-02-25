@@ -14,6 +14,8 @@ import { IAssistantMessageProps } from "./chatbot/types";
 import styles from "./AgentPreviewChatBot.module.css";
 import { AgentIcon } from "./AgentIcon";
 
+import { FalchettiTable } from "./chatbot/FalchettiTable";
+
 const DeleteIcon = bundleIcon(DeleteFilled, DeleteRegular);
 
 export function AssistantMessage({
@@ -52,7 +54,7 @@ export function AssistantMessage({
       }
       avatar={<AgentIcon alt="" iconName={agentLogo} />}
       className={styles.copilotChatMessage}
-      disclaimer={<span>AI-generated content may be incorrect</span>}
+      // disclaimer={<span>""</span>}
       footnote={
         <>
           {hasAnnotations && (
@@ -80,7 +82,11 @@ export function AssistantMessage({
       name={agentName ?? "Bot"}
     >
       <Suspense fallback={<Spinner size="small" />}>
-        <Markdown content={message.content} />
+        {message.messageType === "widget" && message.widget?.type === "falchetti" ? (
+          <FalchettiTable payload={message.widget.data} />
+        ) : (
+          <Markdown content={message.content} />
+        )}
       </Suspense>
     </CopilotMessage>
   );

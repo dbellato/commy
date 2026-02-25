@@ -46,7 +46,8 @@
   overflow: hidden;
 
   box-sizing: border-box;
-  width: 50%;
+  width: 95vw;
+  max-width: none;
   margin: 5px auto;
 }
 

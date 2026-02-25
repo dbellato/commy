@@ -2,6 +2,23 @@
  * Common type definitions for chat components
  */
 
+export type Topic = "manuals" | "specifications" | "components";
+
+export type WidgetType = "falchetti";
+
+export interface IFalchettiWidgetData {
+  all_cols: string[];
+  filterable_cols: string[];
+  distincts: Record<string, any[]>;
+  rows: Record<string, any>[];
+  max_rows: number;
+}
+
+export interface IWidgetPayload {
+  type: WidgetType;
+  data: IFalchettiWidgetData;
+}
+
 export interface IFileEntity {
   id: string;
   name: string;
@@ -29,6 +46,11 @@ export interface IChatItem {
   id: string;
   role?: string;
   content: string;
+
+  // ✅ Add these
+  messageType?: "text" | "widget";
+  widget?: IWidgetPayload;
+  
   isAnswer?: boolean;
   annotations?: any[];
   fileReferences?: Map<string, any>;
@@ -67,7 +89,14 @@ export interface IUserMessageProps {
 export interface ChatContextType {
   messageList: IChatItem[];
   isResponding: boolean;
-  onSend: (message: string) => void;
+  // Topic chosen at the start and kept for the session
+  topic: Topic | null;
+  // Call to set topic from the landing page buttons
+  setTopic: (topic: Topic) => void;
+  // Clears messages + topic (used by "New Chat")
+  resetChat: () => void;
+  // Normal send
+  onSend: (message: string) => void | Promise<void>;
 }
 
 export interface AgentPreviewChatBotProps {
@@ -75,3 +104,4 @@ export interface AgentPreviewChatBotProps {
   agentLogo?: string;
   chatContext: ChatContextType;
 }
+

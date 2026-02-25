@@ -4056,6 +4056,10 @@
                         "value": "[parameters('aiSearchIndexName')]"
                       },
                       {
+                        "name": "AZURE_AI_SEARCH_INDEX_NAME_SPECS",
+                        "value": "[parameters('aiSearchIndexNameSpecs')]"
+                      },
+                      {
                         "name": "AZURE_AI_EMBED_DIMENSIONS",
                         "value": "[parameters('embeddingDeploymentDimensions')]"
                       },
@@ -5595,6 +5599,10 @@
     "AZURE_AI_SEARCH_INDEX_NAME": {
       "type": "string",
       "value": "[parameters('aiSearchIndexName')]"
+    },
+    "AZURE_AI_SEARCH_INDEX_NAME_SPECS": {
+      "type": "string",
+      "value": "[parameters('aiSearchIndexNameSpecs')]"
     },
     "AZURE_AI_SEARCH_ENDPOINT": {
       "type": "string",
