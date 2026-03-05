@@ -33,6 +33,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       draftRef.current = "";
     }
   }, [currentUserMessage]);
+  // --- autofocus on mount ---
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      const editor = document.querySelector<HTMLElement>('[data-testid="chat-input"] [contenteditable], [data-testid="chat-input"] textarea, [data-testid="chat-input"] input');
+      editor?.focus();
+    });
+  }, []);
 
   const clearInput = () => {
     isRecallingRef.current = true;

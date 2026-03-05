@@ -257,7 +257,7 @@ def create_app():
     if not os.getenv("RUNNING_IN_PRODUCTION"):
         #load_dotenv(override=True)
         ROOT = Path(__file__).resolve().parents[1]
-        env_path = ROOT / ".env.sample"
+        env_path = ROOT / ".env"
         # print("Trying to load:", env_path, "exists:", env_path.exists())
         loaded = load_dotenv(env_path, override=True)
         # print("load_dotenv returned:", loaded)
