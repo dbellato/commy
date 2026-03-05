@@ -56,6 +56,17 @@ export function AgentPreview({ agentDetails }: IAgentPreviewProps): ReactNode {
     messageListRef.current = messageList;
   }, [messageList]);
 
+  // 2. Focus the input whenever a topic is selected
+  useEffect(() => {
+    if (!topic) return;
+    requestAnimationFrame(() => {
+      const editor = document.querySelector<HTMLElement>(
+        '[data-testid="chat-input"]'
+      );
+      editor?.focus();
+    });
+  }, [topic]); // <-- fires when topic changes from null to a value
+
   // (Optional) if you want a consistent assistant id: ---> NEW
   const makeAssistantId = () => `assistant-${Date.now()}`;
 
