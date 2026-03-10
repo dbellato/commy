@@ -313,7 +313,7 @@ def create_app():
 
     import pyodbc
     try:
-        print("ODBC drivers:", pyodbc.drivers())
+        logger.info("ODBC drivers: %s", pyodbc.drivers())
     except Exception as e:
         logger.error("No ODBC drivers:: %s", e)
 

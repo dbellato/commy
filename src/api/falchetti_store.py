@@ -1,5 +1,6 @@
 import pyodbc
 import re
+import threading
 
 VIEW = "dbo.ArticoliFalchettiModelli"
 
@@ -12,6 +13,7 @@ ALL_COLS = FILTERABLE_COLS + ["Note"]
 
 _ROWS = None
 _DISTINCTS = None
+_LOCK = threading.Lock()
 
 _SPLIT_RE = re.compile(r"\s*,\s*")
 
@@ -34,49 +36,56 @@ def connect(conn_str: str):
     conn = pyodbc.connect(conn_str)
     return conn
 
-def warmup(db_path: str,force: bool = False):
+def warmup(db_path: str, force: bool = False):
     global _ROWS, _DISTINCTS
+    # Fast path: already loaded and no forced refresh
     if _ROWS is not None and not force:
         return
 
-    q = f"SELECT {', '.join(ALL_COLS)} FROM {VIEW};"
-    with connect(db_path) as cn:
-        cur = cn.cursor()
-        cur.execute(q)
-        cols = [d[0] for d in cur.description]
-        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    with _LOCK:
+        # Second check inside the lock: another thread may have finished while we waited
+        if _ROWS is not None and not force:
+            return
 
-    # trim stringhe
-    for r in rows:
-        for k, v in list(r.items()):
-            if isinstance(v, str):
-                r[k] = v.strip()
+        q = f"SELECT {', '.join(ALL_COLS)} FROM {VIEW};"
+        with connect(db_path) as cn:
+            cur = cn.cursor()
+            cur.execute(q)
+            cols = [d[0] for d in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchall()]
 
-    distincts = {}
-    for col in FILTERABLE_COLS:
-        if col == "Modelli":
-            continue
-        s = set()
+        # trim stringhe
         for r in rows:
-            v = r.get(col)
-            if v is None:
+            for k, v in list(r.items()):
+                if isinstance(v, str):
+                    r[k] = v.strip()
+
+        distincts = {}
+        for col in FILTERABLE_COLS:
+            if col == "Modelli":
                 continue
-            if isinstance(v, str) and v.strip() == "":
-                continue
-            s.add(v)
-        distincts[col] = sorted(s, key=lambda x: str(x))
+            s = set()
+            for r in rows:
+                v = r.get(col)
+                if v is None:
+                    continue
+                if isinstance(v, str) and v.strip() == "":
+                    continue
+                s.add(v)
+            distincts[col] = sorted(s, key=lambda x: str(x))
 
-    # ✅ DISTINCT DERIVATI PER "Modelli"
-    mod_set = set()
-    for r in rows:
-        for m in _split_modelli(r.get("Modelli")):
-            mod_set.add(m)
+        # ✅ DISTINCT DERIVATI PER "Modelli"
+        mod_set = set()
+        for r in rows:
+            for m in _split_modelli(r.get("Modelli")):
+                mod_set.add(m)
 
-    # ordinati per nome (case-insensitive ma preserva originali)
-    distincts["Modelli"] = sorted(mod_set, key=lambda x: x.casefold())
+        # ordinati per nome (case-insensitive ma preserva originali)
+        distincts["Modelli"] = sorted(mod_set, key=lambda x: x.casefold())
 
-    _ROWS = rows
-    _DISTINCTS = distincts
+        # Assign both atomically so callers never see _ROWS set but _DISTINCTS not yet
+        _ROWS = rows
+        _DISTINCTS = distincts
 
 def get_state(conn_str: str):
     warmup(conn_str)
@@ -89,5 +98,6 @@ def get_state(conn_str: str):
 
 def clear():
     global _ROWS, _DISTINCTS
-    _ROWS = None
-    _DISTINCTS = None
+    with _LOCK:
+        _ROWS = None
+        _DISTINCTS = None

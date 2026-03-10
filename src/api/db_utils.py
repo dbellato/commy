@@ -193,24 +193,28 @@ def config_for_rotary(
         elif mode == 'parallelo 3':
             rpm = round(VolEff * flow_rate_ * 1000 / (volume_ * RRotary_ * 3), 0)
             torque = round(NetTorque * RRotary_ * MecEff * 3, 0)
-        elif 'serie' in mode:
+        elif mode and 'serie' in mode:
             rpm = round(VolEff * flow_rate_ * 1000 / (volume_ * RRotary_), 0)
             torque = round(NetTorque * RRotary_ * MecEff, 0)
-        elif 'parallelo' in mode:
+        elif mode and 'parallelo' in mode:
             rpm = round(VolEff * flow_rate_ * 1000 / (volume_ * RRotary_ * 2), 0)
             torque = round(NetTorque * RRotary_ * MecEff * 2, 0)
+        else:
+            raise ValueError(f"No matching mode '{mode}' for rotary '{rotary}' (targetSet1)")
 
     elif row_contains_any(rotary, targetSet2):
         rpm = round(VolEff * flow_rate_ * 1000 / (volume_ * RRotary_ * RReducer_ * RGear_), 0)
         torque = round(pressure * volume_ * RRotary_ * RReducer_ * RGear_ * MecEff / 628, 0)
 
     elif row_contains_any(rotary, targetR3200):
-        if 'serie' in mode:
+        if mode and 'serie' in mode:
             rpm = round(VolEff * flow_rate_ * 1000 / (volume_ * RRotary_ * 2), 0)
             torque = round(NetTorque * RRotary_ * MecEff * 2, 0)
-        elif 'parallelo' in mode:
+        elif mode and 'parallelo' in mode:
             rpm = round(VolEff * flow_rate_ * 1000 / (volume_ * RRotary_ * 4), 0)
             torque = round(NetTorque * RRotary_ * MecEff * 4, 0)
+        else:
+            raise ValueError(f"No matching mode '{mode}' for rotary '{rotary}' (targetR3200)")
 
     elif row_contains_any(rotary, targetSet4):
         rpm = round(VolEff * flow_rate_ * 1000 / (2 * volume_ * RRotary_ * RReducer_ * RGear_), 0)
@@ -224,11 +228,13 @@ def config_for_rotary(
             elif 'parallelo' in mode:
                 rpm = round(VolEff * flow_rate_ * 1000 / (volume_ * RRotary_ * 2), 0)
                 torque = round(NetTorque * RRotary_ * MecEff * 2, 0)
+            else:
+                raise ValueError(f"No matching mode '{mode}' for rotary '{rotary}' (targetR400)")
         else:
             rpm = round(VolEff * flow_rate_ * 1000 / (volume_ * RRotary_ * RReducer_ * RGear_), 0)
             torque = round(pressure * volume_ * RRotary_ * RReducer_ * RGear_ * MecEff / 628, 0)
     else:
-        print("No matching targets")            
+        raise ValueError(f"No matching rotary target for '{rotary}', mode='{mode}'")            
 
     results = {
         "Rotary": rotary,
@@ -555,7 +561,7 @@ def write_inventario_and_commesse_inventario(db_path: str, df):
         cur.execute("SELECT ArticoloID FROM Articoli WHERE Codice = ?", (codice))
         res = cur.fetchone()
         if not res:
-            print(f"[WARN] Codice '{codice}' not found in Articoli; skipping row.")
+            logger.warning("Codice '%s' not found in Articoli; skipping row.", codice)
             continue
         articolo_id = res[0]
 
@@ -604,16 +610,17 @@ def write_inventario_and_commesse_inventario(db_path: str, df):
                 """,
                 (commessa_nr)
             )
-            if not com_row:
-                print(f"[WARN] Commessa '{commessa}' not found in Commesse; skipping CommesseInventario.")
+            com_row2 = cur.fetchone()
+            if not com_row2:
+                logger.warning("Commessa '%s' not found in Commesse; skipping CommesseInventario.", commessa)
                 continue
             else:
                 # Add special commessa
-                matricola_ = cur.fetchone()[1]
-                modello_ = cur.fetchone()[2]
-                pesotot_ = cur.fetchone()[3]
-                pesosonda_ = cur.fetchone()[4]
-                pesocentrale_ = cur.fetchone()[5]
+                matricola_ = com_row2[1]
+                modello_ = com_row2[2]
+                pesotot_ = com_row2[3]
+                pesosonda_ = com_row2[4]
+                pesocentrale_ = com_row2[5]
                 cur.execute(
                     """
                     INSERT INTO Commesse (Commessa, Type, Matricola, ModelloID, PesoTot, PesoSonda, PesoCentrale)
@@ -651,7 +658,7 @@ def write_inventario_and_commesse_inventario(db_path: str, df):
                 (commessa_id, inventario_id)
             )
         else:
-            print(f"[WARN] CommesseInventario already inside.")
+            logger.warning("CommesseInventario already inside.")
 
     conn.commit()
     conn.close()

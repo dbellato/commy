@@ -553,7 +553,7 @@ async def chat_stream_handler(
 
             yield serialize_sse_event({"content": accumulated_message, "type": "completed_message"})
 
-        except BaseException as e:
+        except Exception as e:
             # Keep your existing content-filter / error handling logic if you prefer.
             error_text = str(e)
             logger.error("Chat error: %s", error_text)
