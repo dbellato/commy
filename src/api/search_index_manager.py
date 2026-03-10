@@ -102,6 +102,10 @@ _COMMESSE_SPAN_RE = re.compile(
     re.I,
 )
 
+# Matches a pure-number phrase inside dimension strings like 114x3000, 3000x114x5
+# The number must appear as a full "segment" between x-separators or at word boundaries.
+_DIM_SEP_RE = re.compile(r"[xX×*]")
+
 def _canon_for_match(s: str) -> str:
     """
     Canonicalize text for matching:
@@ -123,6 +127,34 @@ def _canon_for_match(s: str) -> str:
     # collapse whitespace
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
+def _phrase_matches_dimension(phrase: str, text: str) -> bool:
+    """
+    Return True if `phrase` (a plain integer string) appears as one of the
+    dimension components in `text`.
+
+    Examples:
+        phrase="114", text="...114x3000..."   -> True
+        phrase="114", text="...3000x114..."   -> True
+        phrase="114", text="...114x3000x5..." -> True
+        phrase="114", text="...1140x3000..."  -> False  (not a full segment)
+    """
+    plain = phrase.strip()
+    if not plain.isdigit():
+        return False
+
+    # Find all "dimension tokens": sequences of digits separated by x/× 
+    # possibly with surrounding spaces: e.g. "114 x 3000", "114X3000", "114×3000"
+    dim_token_re = re.compile(
+        r"\b\d+(?:\s*[xX×*]\s*\d+)+\b"
+    )
+    for m in dim_token_re.finditer(text):
+        segments = _DIM_SEP_RE.split(m.group())
+        segments = [s.strip() for s in segments]
+        if plain in segments:
+            return True
+    return False
+
 
 def normalize_numeric_literals(text: str) -> str:
     """
@@ -1571,6 +1603,23 @@ class SearchIndexManager:
                         break
                     continue
 
+                # 2b) dimension fallback: "114" should match inside "114x3000"
+                p_stripped = p.strip()
+                if p_stripped.isdigit():
+                    dim_token_re_local = re.compile(r"\b\d+(?:\s*[xX×*]\s*\d+)+\b")
+                    for dm in dim_token_re_local.finditer(raw):
+                        segments = _DIM_SEP_RE.split(dm.group())
+                        if p_stripped in [s.strip() for s in segments]:
+                            sn = _snip_around(raw, dm.start(), dm.end(), window=140)
+                            key = sn.lower()
+                            if key not in seen:
+                                seen.add(key)
+                                snippets.append(sn)
+                            break  # one snippet per phrase is enough
+                    if len(snippets) >= max_snips:
+                        break
+                    continue
+
                 # 3) fuzzy regex (spacing, separators, thousands)
                 rx = _build_phrase_fuzzy_regex(p)
                 m = rx.search(raw)
@@ -1643,6 +1692,9 @@ class SearchIndexManager:
                             continue
                         if p_c.lower() in raw_c.lower():
                             return True
+                        # Dimension fallback: "114" should match "114x3000" in the raw text
+                        if _phrase_matches_dimension(p_c, raw_c):
+                            return True
                 return False
 
             hits = [h for h in hits if _doc_has_any_phrase(h)]
@@ -1694,7 +1746,13 @@ class SearchIndexManager:
                 hit_any = False
                 for p in variants:
                     p_c = _canon_for_match(p).lower()
-                    if p_c and p_c in raw_c:
+                    if not p_c:
+                        continue
+                    if p_c in raw_c:
+                        hit_any = True
+                        break
+                    # Dimension fallback
+                    if _phrase_matches_dimension(p_c, raw_c):
                         hit_any = True
                         break
                 if hit_any:
