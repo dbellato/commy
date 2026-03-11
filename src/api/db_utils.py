@@ -664,13 +664,33 @@ def write_inventario_and_commesse_inventario(db_path: str, df):
     conn.close()
 
 
+def _build_kits_result(
+    rotary_meta: Dict[str, Optional[str]],
+    kit_rows: "DefaultDict[str, List[Tuple[str, str]]]",
+    kit_meta: Dict[str, Dict[str, Optional[str]]],
+    selected_kits: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Assembla il dizionario di risultato arricchito con metadati immagini/PDF."""
+    keys = selected_kits if selected_kits is not None else list(kit_rows.keys())
+    return {
+        **rotary_meta,
+        "kits": {
+            kit: {"items": kit_rows[kit], **kit_meta.get(kit, {})}
+            for kit in keys
+        },
+    }
+
+
 def kits_for_rotary(
     db_path: str,
     rotary_id: Any,
     keywords: Optional[List[str]] = None,
-) -> Dict[str, List[Tuple[str, str]]]:
+) -> Dict[str, Any]:
     """
-    Vista RotariesKitsArticoli -> {Kit: [(Accessorio, CodiceAccessorio), ...]}
+    Vista RotariesKitsArticoli -> dizionario arricchito con:
+      - immagine_rotary, scheda_rotary  (per l'intera rotary)
+      - kits: {Kit: {items: [(Accessorio, CodiceAccessorio), ...],
+                     immagine_kit, scheda_kit}}
 
     Se `keywords` è specificato:
     - se esistono kit che matchano *tutte* le keywords -> ritorna solo quei kit
@@ -683,7 +703,7 @@ def kits_for_rotary(
 
     base_sql = (
         "SELECT Kit, Accessorio, CodiceAccessorio, "
-        "       LOWER(ISNULL(Keywords, '')) AS kw "
+        " LOWER(ISNULL(Keywords, '')) AS kw, ImmagineRotary, SchedaRotary, ImmagineKit, SchedaKit "
         "FROM RotariesKitsArticoli "
         "WHERE RotaryID = ?"
     )
@@ -696,6 +716,8 @@ def kits_for_rotary(
     # Raggruppo righe per kit
     kit_rows: DefaultDict[str, List[Tuple[str, str]]] = defaultdict(list)
     kit_kw_text: DefaultDict[str, str] = defaultdict(str)
+    kit_meta: Dict[str, Dict[str, Optional[str]]] = {}
+    rotary_meta: Dict[str, Optional[str]] = {"immagine_rotary": None, "scheda_rotary": None}
 
     for r in rows:
         kit = r["Kit"]
@@ -704,6 +726,19 @@ def kits_for_rotary(
         keyw = (r.get("kw") or "").lower()
 
         kit_rows[kit].append((acc, code))
+
+        # Metadati a livello rotary (uguale per tutte le righe)
+        if rotary_meta["immagine_rotary"] is None:
+            rotary_meta["immagine_rotary"] = r.get("ImmagineRotary") or None
+            rotary_meta["scheda_rotary"] = r.get("SchedaRotary") or None
+
+        # Metadati a livello kit
+        if kit not in kit_meta:
+            kit_meta[kit] = {
+                "immagine_kit": r.get("ImmagineKit") or None,
+                "scheda_kit": r.get("SchedaKit") or None,
+            }
+
         # Accumulo il testo delle keywords del kit (nel caso ci siano più righe)
         if keyw:
             if kit_kw_text[kit]:
@@ -713,7 +748,7 @@ def kits_for_rotary(
 
     # Se non ci sono keywords fornite -> ritorna tutto
     if not kw:
-        return dict(kit_rows)
+        return _build_kits_result(rotary_meta, kit_rows, kit_meta)
 
     # Calcola quante keywords matchano per ciascun kit
     kit_match_counts: Dict[str, int] = {}
@@ -736,21 +771,23 @@ def kits_for_rotary(
     ]
 
     if full_match_kits:
-        # Ritorna solo i kit che matchano tutte le keywords
-        return {kit: kit_rows[kit] for kit in full_match_kits}
+        return _build_kits_result(rotary_meta, kit_rows, kit_meta, full_match_kits)
 
     # Nessun kit matcha tutte le keywords -> prendo quelli col massimo numero di match
     best_kits = [kit for kit, count in kit_match_counts.items() if count == max_matches]
 
-    return {kit: kit_rows[kit] for kit in best_kits}
+    return _build_kits_result(rotary_meta, kit_rows, kit_meta, best_kits)
 
 def kits_for_configuration(
     db_path: str,
     configuration_id: Any,
     keywords: Optional[List[str]] = None,
-) -> Dict[str, List[Tuple[str, str]]]:
+) -> Dict[str, Any]:
     """
-    Vista RotariesKitsArticoli -> {Kit: [(Accessorio, CodiceAccessorio), ...]}
+    Vista RotariesKitsArticoli -> dizionario arricchito con:
+      - immagine_rotary, scheda_rotary  (per l'intera rotary)
+      - kits: {Kit: {items: [(Accessorio, CodiceAccessorio), ...],
+                     immagine_kit, scheda_kit}}
 
     Se `keywords` è specificato:
     includi solo i kit per cui la colonna Keywords contiene almeno 2 parole-chiave
@@ -760,9 +797,9 @@ def kits_for_configuration(
 
     base_sql = (
         "SELECT rka.Kit, rka.Accessorio, rka.CodiceAccessorio, "
-        "LOWER(ISNULL(rka.Keywords, '')) AS kw "
+        "LOWER(ISNULL(rka.Keywords, '')) AS kw, ImmagineRotary, SchedaRotary, ImmagineKit, SchedaKit "
         "FROM RotariesKitsArticoli rka "
-        "INNER JOIN Configurazioni c ON c.InfoRotary = rka.Rotary " 
+        "INNER JOIN Configurazioni c ON c.InfoRotary = rka.Rotary "
         "WHERE c.ConfigurazioneID = ?"
     )
 
@@ -774,6 +811,8 @@ def kits_for_configuration(
     # Raggruppo righe per kit
     kit_rows: DefaultDict[str, List[Tuple[str, str]]] = defaultdict(list)
     kit_kw_text: DefaultDict[str, str] = defaultdict(str)
+    kit_meta: Dict[str, Dict[str, Optional[str]]] = {}
+    rotary_meta: Dict[str, Optional[str]] = {"immagine_rotary": None, "scheda_rotary": None}
 
     for r in rows:
         kit = r["Kit"]
@@ -782,6 +821,19 @@ def kits_for_configuration(
         keyw = (r.get("kw") or "").lower()
 
         kit_rows[kit].append((acc, code))
+
+        # Metadati a livello rotary (uguale per tutte le righe)
+        if rotary_meta["immagine_rotary"] is None:
+            rotary_meta["immagine_rotary"] = r.get("ImmagineRotary") or None
+            rotary_meta["scheda_rotary"] = r.get("SchedaRotary") or None
+
+        # Metadati a livello kit
+        if kit not in kit_meta:
+            kit_meta[kit] = {
+                "immagine_kit": r.get("ImmagineKit") or None,
+                "scheda_kit": r.get("SchedaKit") or None,
+            }
+
         # Accumulo il testo delle keywords del kit (nel caso ci siano più righe)
         if keyw:
             if kit_kw_text[kit]:
@@ -791,7 +843,7 @@ def kits_for_configuration(
 
     # Se non ci sono keywords fornite -> ritorna tutto
     if not kw:
-        return dict(kit_rows)
+        return _build_kits_result(rotary_meta, kit_rows, kit_meta)
 
     # Calcola quante keywords matchano per ciascun kit
     kit_match_counts: Dict[str, int] = {}
@@ -814,13 +866,12 @@ def kits_for_configuration(
     ]
 
     if full_match_kits:
-        # Ritorna solo i kit che matchano tutte le keywords
-        return {kit: kit_rows[kit] for kit in full_match_kits}
+        return _build_kits_result(rotary_meta, kit_rows, kit_meta, full_match_kits)
 
     # Nessun kit matcha tutte le keywords -> prendo quelli col massimo numero di match
     best_kits = [kit for kit, count in kit_match_counts.items() if count == max_matches]
 
-    return {kit: kit_rows[kit] for kit in best_kits}
+    return _build_kits_result(rotary_meta, kit_rows, kit_meta, best_kits)
 
 def check_rotaryID(
         db_path: str,

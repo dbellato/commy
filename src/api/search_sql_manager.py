@@ -137,15 +137,62 @@ class SqlSearchManager:
         payload2 = parsed.model_dump(exclude={"intent", "confidence"}, exclude_none=True)
         return parsed.intent, payload2
 
-    def _render_kits_markdown(self, title: str, kits: Dict[str, list[tuple[str, str]]]) -> str:
-        out = [f"RISULTATO DB (kits) — **{title}**\n"]
-        for kit_name, items in kits.items():
-            out.append(f"### {kit_name}")
+    _BLOB_BASE = "https://digistorageaccount.blob.core.windows.net/rotaries"
+
+    def _render_kits_markdown(self, title: str, result: Dict[str, Any]) -> str:
+        immagine_rotary: Optional[str] = result.get("immagine_rotary")
+        scheda_rotary: Optional[str] = result.get("scheda_rotary")
+        kits: Dict[str, Any] = result.get("kits", {})
+
+        # Title — bold, hyperlinked to PDF if available
+        if scheda_rotary:
+            rotary_url = f"{self._BLOB_BASE}/{scheda_rotary}"
+            title_md = f"[{title}]({rotary_url})"
+        else:
+            title_md = title
+
+        out = [f"RISULTATO DB (kits) — **{title_md}**\n"]
+
+        # Rotary image block (350 px height, width auto)
+        if immagine_rotary:
+            img_url = f"{self._BLOB_BASE}/{immagine_rotary}"
+            out.append(
+                f'<img src="{img_url}" alt="Immagine Rotary"'
+                f' style="height:350px;width:auto;display:block;margin-bottom:12px;">\n'
+            )
+
+        for kit_name, kit_data in kits.items():
+            items: list[tuple[str, str]] = kit_data.get("items", [])
+            immagine_kit: Optional[str] = kit_data.get("immagine_kit")
+            scheda_kit: Optional[str] = kit_data.get("scheda_kit")
+
+            # Kit heading — hyperlinked to kit PDF if available
+            if scheda_kit:
+                kit_url = f"{self._BLOB_BASE}/{scheda_kit}"
+                kit_title = f"[{kit_name}]({kit_url})"
+            else:
+                kit_title = kit_name
+
+            out.append(f"### {kit_title}")
+
+            if immagine_kit:
+                kit_img_url = f"{self._BLOB_BASE}/{immagine_kit}"
+                # Float image right; table flows to the left; clear resets for next kit
+                out.append(
+                    f'<img src="{kit_img_url}" alt="Immagine Kit"'
+                    f' style="height:350px;width:auto;float:right;margin-left:16px;">'
+                )
+
             out.append("| Accessorio | CodiceAccessorio |")
             out.append("| --- | --- |")
             for acc, code in items:
                 out.append(f"| {str(acc).replace('|','\\|')} | {str(code).replace('|','\\|')} |")
-            out.append("")  # blank line
+
+            if immagine_kit:
+                out.append('<div style="clear:both;"></div>')
+
+            out.append("")  # blank line between kits
+
         return "\n".join(out)
 
     def __init__(
@@ -402,21 +449,21 @@ class SqlSearchManager:
                         "Il RotaryID indicato non è associato a nessuna Rotary. Controlla l'ID e ritenta."
                     )
 
-                kits = await run_in_threadpool(kits_for_rotary, self._cs, id_, keywords)
-                if not kits:
+                result = await run_in_threadpool(kits_for_rotary, self._cs, id_, keywords)
+                if not result.get("kits"):
                     return f"RISULTATO DB:\nNessun kit trovato per RotaryID {id_}."
 
-                # render kits as markdown tables
-                text = self._render_kits_markdown(f"RotaryID {id_}", kits)
+                # render kits as markdown tables with images/links
+                text = self._render_kits_markdown(f"RotaryID {id_}", result)
 
                 return text + "\n\n" + self._next_actions_footer_search("kit", {"field": "rotaryid", "id": id_})
 
             else:
-                kits = await run_in_threadpool(kits_for_configuration, self._cs, id_, keywords)
-                if not kits:
+                result = await run_in_threadpool(kits_for_configuration, self._cs, id_, keywords)
+                if not result.get("kits"):
                     return f"RISULTATO DB:\nNessun kit trovato per ConfigurazioneID {id_}."
 
-                text = self._render_kits_markdown(f"ConfigurazioneID {id_}", kits)
+                text = self._render_kits_markdown(f"ConfigurazioneID {id_}", result)
 
                 return text + "\n\n" + self._next_actions_footer_search("kit", {"field": "configurazioneid", "id": id_})
 

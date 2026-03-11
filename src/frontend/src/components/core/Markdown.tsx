@@ -280,6 +280,8 @@ export function Markdown({
                     attributes: {
                       ...defaultSchema.attributes,
                       code: [["className", /^language-./]],
+                      img: [...(defaultSchema.attributes?.img ?? []), "style", "height", "width"],
+                      div: [...(defaultSchema.attributes?.div ?? []), "style"],
                     },
                   },
                 ],
