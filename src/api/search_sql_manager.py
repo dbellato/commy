@@ -156,6 +156,7 @@ class SqlSearchManager:
     def _render_kits_markdown(self, title: str, result: Dict[str, Any]) -> str:
         immagine_rotary: Optional[str] = result.get("immagine_rotary")
         scheda_rotary: Optional[str] = result.get("scheda_rotary")
+        descrizione: Optional[str] = result.get("descrizione")
         kits: Dict[str, Any] = result.get("kits", {})
 
         # Title — bold, hyperlinked to PDF if available
@@ -165,11 +166,16 @@ class SqlSearchManager:
         else:
             title_md = title
 
-        out = [f"RISULTATO DB (kits) — **{title_md}**\n"]
+        title_line = f"RISULTATO DB (kits) — **{title_md}**"
+        if descrizione:
+            title_line += f" — {descrizione}"
+
+        out = [title_line + "\n"]
 
         # Rotary image block (350 px height, width auto)
         if immagine_rotary:
             img_url = f"{self._BLOB_BASE}/{immagine_rotary}"
+            out.append("")  # blank line between title and image
             out.append(
                 f'<img src="{img_url}" alt="Immagine Rotary"'
                 f' style="height:350px;width:auto;display:block;margin-bottom:12px;">\n'

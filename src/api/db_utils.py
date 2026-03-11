@@ -703,7 +703,7 @@ def kits_for_rotary(
 
     base_sql = (
         "SELECT Kit, Accessorio, CodiceAccessorio, "
-        " LOWER(ISNULL(Keywords, '')) AS kw, ImmagineRotary, SchedaRotary, ImmagineKit, SchedaKit "
+        " LOWER(ISNULL(Keywords, '')) AS kw, ImmagineRotary, SchedaRotary, ImmagineKit, SchedaKit, Descrizione "
         "FROM RotariesKitsArticoli "
         "WHERE RotaryID = ?"
     )
@@ -717,7 +717,7 @@ def kits_for_rotary(
     kit_rows: DefaultDict[str, List[Tuple[str, str]]] = defaultdict(list)
     kit_kw_text: DefaultDict[str, str] = defaultdict(str)
     kit_meta: Dict[str, Dict[str, Optional[str]]] = {}
-    rotary_meta: Dict[str, Optional[str]] = {"immagine_rotary": None, "scheda_rotary": None}
+    rotary_meta: Dict[str, Optional[str]] = {"immagine_rotary": None, "scheda_rotary": None, "descrizione": None}
 
     for r in rows:
         kit = r["Kit"]
@@ -731,6 +731,7 @@ def kits_for_rotary(
         if rotary_meta["immagine_rotary"] is None:
             rotary_meta["immagine_rotary"] = r.get("ImmagineRotary") or None
             rotary_meta["scheda_rotary"] = r.get("SchedaRotary") or None
+            rotary_meta["descrizione"] = r.get("Descrizione") or None
 
         # Metadati a livello kit
         if kit not in kit_meta:
@@ -797,7 +798,7 @@ def kits_for_configuration(
 
     base_sql = (
         "SELECT rka.Kit, rka.Accessorio, rka.CodiceAccessorio, "
-        "LOWER(ISNULL(rka.Keywords, '')) AS kw, ImmagineRotary, SchedaRotary, ImmagineKit, SchedaKit "
+        "LOWER(ISNULL(rka.Keywords, '')) AS kw, ImmagineRotary, SchedaRotary, ImmagineKit, SchedaKit, rka.Descrizione "
         "FROM RotariesKitsArticoli rka "
         "INNER JOIN Configurazioni c ON c.InfoRotary = rka.Rotary "
         "WHERE c.ConfigurazioneID = ?"
@@ -812,7 +813,7 @@ def kits_for_configuration(
     kit_rows: DefaultDict[str, List[Tuple[str, str]]] = defaultdict(list)
     kit_kw_text: DefaultDict[str, str] = defaultdict(str)
     kit_meta: Dict[str, Dict[str, Optional[str]]] = {}
-    rotary_meta: Dict[str, Optional[str]] = {"immagine_rotary": None, "scheda_rotary": None}
+    rotary_meta: Dict[str, Optional[str]] = {"immagine_rotary": None, "scheda_rotary": None, "descrizione": None}
 
     for r in rows:
         kit = r["Kit"]
@@ -826,6 +827,7 @@ def kits_for_configuration(
         if rotary_meta["immagine_rotary"] is None:
             rotary_meta["immagine_rotary"] = r.get("ImmagineRotary") or None
             rotary_meta["scheda_rotary"] = r.get("SchedaRotary") or None
+            rotary_meta["descrizione"] = r.get("Descrizione") or None
 
         # Metadati a livello kit
         if kit not in kit_meta:
