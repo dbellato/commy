@@ -193,13 +193,12 @@ class SqlSearchManager:
 
             if immagine_kit:
                 kit_img_url = f"{self._BLOB_BASE}/{immagine_kit}"
-                # Float image right so the table flows to its left;
-                # clear:both ensures the next kit starts below the taller element
                 out.append(
+                    f'<div style="display:flex;gap:16px;align-items:flex-start;">'
+                    f'<div style="flex:1;overflow-x:auto;">{table_html}</div>'
                     f'<img src="{kit_img_url}" alt="Immagine Kit"'
-                    f' style="height:350px;width:auto;float:right;margin-left:16px;">'
-                    f'{table_html}'
-                    f'<div style="clear:both;"></div>'
+                    f' style="height:350px;width:auto;flex-shrink:0;">'
+                    f'</div>'
                 )
             else:
                 out.append(table_html)
