@@ -159,26 +159,28 @@ class SqlSearchManager:
         descrizione: Optional[str] = result.get("descrizione")
         kits: Dict[str, Any] = result.get("kits", {})
 
-        # Title — bold, hyperlinked to PDF if available
-        if scheda_rotary:
-            rotary_url = f"{self._BLOB_BASE}/{scheda_rotary}"
-            title_md = f"[{title}]({rotary_url})"
-        else:
-            title_md = title
-
-        title_line = f"RISULTATO DB (kits) — **{title_md}**"
+        # Title: link is on Descrizione if available, otherwise on the ID
+        title_line = f"RISULTATO DB (kits) — **{title}**"
         if descrizione:
-            title_line += f" — {descrizione}"
+            if scheda_rotary:
+                rotary_url = f"{self._BLOB_BASE}/{scheda_rotary}"
+                title_line += f" — [{descrizione}]({rotary_url})"
+            else:
+                title_line += f" — {descrizione}"
+        elif scheda_rotary:
+            rotary_url = f"{self._BLOB_BASE}/{scheda_rotary}"
+            title_line = f"RISULTATO DB (kits) — **[{title}]({rotary_url})**"
 
         out = [title_line + "\n"]
 
         # Rotary image block (350 px height, width auto)
         if immagine_rotary:
             img_url = f"{self._BLOB_BASE}/{immagine_rotary}"
-            out.append("")  # blank line between title and image
             out.append(
+                f'<div style="margin-top:16px;">'
                 f'<img src="{img_url}" alt="Immagine Rotary"'
-                f' style="height:350px;width:auto;display:block;margin-bottom:12px;">\n'
+                f' style="height:350px;width:auto;display:block;margin-bottom:12px;">'
+                f'</div>\n'
             )
 
         for kit_name, kit_data in kits.items():
