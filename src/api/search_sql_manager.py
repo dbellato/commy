@@ -137,7 +137,21 @@ class SqlSearchManager:
         payload2 = parsed.model_dump(exclude={"intent", "confidence"}, exclude_none=True)
         return parsed.intent, payload2
 
-    _BLOB_BASE = "https://digistorageaccount.blob.core.windows.net/rotaries"
+    _BLOB_BASE = "/blob/rotaries"
+
+    @staticmethod
+    def _html_table(items: list[tuple[str, str]]) -> str:
+        rows = "".join(
+            f"<tr><td>{str(acc).replace('<','&lt;')}</td>"
+            f"<td>{str(code).replace('<','&lt;')}</td></tr>"
+            for acc, code in items
+        )
+        return (
+            "<table>"
+            "<thead><tr><th>Accessorio</th><th>CodiceAccessorio</th></tr></thead>"
+            f"<tbody>{rows}</tbody>"
+            "</table>"
+        )
 
     def _render_kits_markdown(self, title: str, result: Dict[str, Any]) -> str:
         immagine_rotary: Optional[str] = result.get("immagine_rotary")
@@ -173,23 +187,22 @@ class SqlSearchManager:
             else:
                 kit_title = kit_name
 
-            out.append(f"### {kit_title}")
+            out.append(f"### {kit_title}\n")
+
+            table_html = self._html_table(items)
 
             if immagine_kit:
                 kit_img_url = f"{self._BLOB_BASE}/{immagine_kit}"
-                # Float image right; table flows to the left; clear resets for next kit
+                # Float image right so the table flows to its left;
+                # clear:both ensures the next kit starts below the taller element
                 out.append(
                     f'<img src="{kit_img_url}" alt="Immagine Kit"'
                     f' style="height:350px;width:auto;float:right;margin-left:16px;">'
+                    f'{table_html}'
+                    f'<div style="clear:both;"></div>'
                 )
-
-            out.append("| Accessorio | CodiceAccessorio |")
-            out.append("| --- | --- |")
-            for acc, code in items:
-                out.append(f"| {str(acc).replace('|','\\|')} | {str(code).replace('|','\\|')} |")
-
-            if immagine_kit:
-                out.append('<div style="clear:both;"></div>')
+            else:
+                out.append(table_html)
 
             out.append("")  # blank line between kits
 

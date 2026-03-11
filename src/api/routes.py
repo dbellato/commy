@@ -3,6 +3,7 @@
 # See LICENSE file in the project root for full license information.
 import json
 import logging
+import mimetypes
 import os
 import re
 import subprocess
@@ -11,7 +12,9 @@ from typing import Dict
 
 import fastapi
 from fastapi import Request, Depends
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
+from azure.identity.aio import DefaultAzureCredential
+from azure.storage.blob.aio import BlobServiceClient
 from fastapi.templating import Jinja2Templates
 from azure.ai.inference.prompts import PromptTemplate
 from azure.ai.inference.aio import ChatCompletionsClient
@@ -62,6 +65,32 @@ logger = get_logger(
 
 router = fastapi.APIRouter()
 templates = Jinja2Templates(directory="api/templates")
+
+_BLOB_STORAGE_ACCOUNT = "digistorageaccount"
+_BLOB_ROTARIES_CONTAINER = "rotaries"
+
+
+@router.get("/blob/rotaries/{filename}")
+async def get_rotaries_blob(filename: str, _ = auth_dependency):
+    """Proxy for Azure Blob Storage rotaries container (no public access)."""
+    credential = DefaultAzureCredential()
+    try:
+        blob_service = BlobServiceClient(
+            account_url=f"https://{_BLOB_STORAGE_ACCOUNT}.blob.core.windows.net",
+            credential=credential,
+        )
+        blob_client = blob_service.get_blob_client(
+            container=_BLOB_ROTARIES_CONTAINER, blob=filename
+        )
+        stream = await blob_client.download_blob()
+        content = await stream.readall()
+    except Exception:
+        raise fastapi.HTTPException(status_code=404, detail="Blob not found")
+    finally:
+        await credential.close()
+
+    mime_type, _ = mimetypes.guess_type(filename)
+    return Response(content=content, media_type=mime_type or "application/octet-stream")
 
 
 def parse_specs_context(context: str) -> list[dict]:
