@@ -705,7 +705,7 @@ def kits_for_rotary(
         "SELECT Kit, Accessorio, CodiceAccessorio, "
         " LOWER(ISNULL(Keywords, '')) AS kw, ImmagineRotary, SchedaRotary, ImmagineKit, SchedaKit, Descrizione "
         "FROM RotariesKitsArticoli "
-        "WHERE RotaryID = ?"
+        "WHERE RotaryID = ? AND KitActive = 1 AND ArticleActive = 1"
     )
 
     with connect(db_path) as conn:
@@ -801,7 +801,7 @@ def kits_for_configuration(
         "LOWER(ISNULL(rka.Keywords, '')) AS kw, ImmagineRotary, SchedaRotary, ImmagineKit, SchedaKit, rka.Descrizione "
         "FROM RotariesKitsArticoli rka "
         "INNER JOIN Configurazioni c ON c.InfoRotary = rka.Rotary "
-        "WHERE c.ConfigurazioneID = ?"
+        "WHERE c.ConfigurazioneID = ? AND rka.KitActive = 1 AND rka.ArticleActive = 1"
     )
 
     with connect(db_path) as conn:
