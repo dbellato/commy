@@ -25,8 +25,9 @@
             width: 90%;
             text-align: center;
         }
-        .icon {
-            font-size: 56px;
+        .logo {
+            width: 80px;
+            height: 80px;
             margin-bottom: 24px;
         }
         h1 {
@@ -60,7 +61,7 @@
 </head>
 <body>
     <div class="card">
-        <div class="icon">🔒</div>
+        <img class="logo" src="/static/assets/template-images/Commy.svg" alt="Commy logo">
         <h1>Accesso non autorizzato</h1>
         <p>Il tuo account non è autorizzato ad accedere a questa applicazione.</p>
         {% if email %}
@@ -68,7 +69,7 @@
         <span class="email">{{ email }}</span>
         {% endif %}
         <p style="margin-top: 20px;">Contatta l'amministratore di sistema per richiedere l'accesso.</p>
-        <div class="footer">COMMY &mdash; Comacchio Foundry</div>
+        <div class="footer">All rights reserved &mdash; Comacchio S.p.A.</div>
     </div>
 </body>
 </html>
