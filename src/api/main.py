@@ -220,6 +220,7 @@ async def lifespan(app: fastapi.FastAPI):
     app.state.search_index_manager = manuals_search_index_manager
     app.state.specs_search_index_manager = specs_search_index_manager
     app.state.sql_search_manager = sql_search_manager
+    app.state.auth_conn_str = sql_cs
     app.state.chat_model = os.environ["AZURE_AI_CHAT_DEPLOYMENT_NAME"]
     yield
 
@@ -339,6 +340,19 @@ def create_app():
     app.mount("/static", StaticFiles(directory="api/static"), name="static")
 
     from . import routes  # noqa
+    from .routes import UnauthorizedException
+    from fastapi.templating import Jinja2Templates as _Jinja2Templates
+    from fastapi.requests import Request as _Request
+
+    _templates = _Jinja2Templates(directory="api/templates")
+
+    @app.exception_handler(UnauthorizedException)
+    async def unauthorized_handler(request: _Request, exc: UnauthorizedException):
+        return _templates.TemplateResponse(
+            "unauthorized.html",
+            {"request": request, "email": exc.email},
+            status_code=403,
+        )
 
     app.include_router(routes.router)
 

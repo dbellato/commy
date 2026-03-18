@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="it" class="h-100">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>COMMY – Accesso negato</title>
+    <link rel="icon" href="/static/assets/template-images/favicon.svg" type="image/svg+xml">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f4f6f8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+            padding: 48px 56px;
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+        }
+        .icon {
+            font-size: 56px;
+            margin-bottom: 24px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #c0392b;
+        }
+        p {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .email {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 6px 14px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #333;
+        }
+        .footer {
+            margin-top: 32px;
+            font-size: 13px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">🔒</div>
+        <h1>Accesso non autorizzato</h1>
+        <p>Il tuo account non è autorizzato ad accedere a questa applicazione.</p>
+        {% if email %}
+        <p>Account rilevato:</p>
+        <span class="email">{{ email }}</span>
+        {% endif %}
+        <p style="margin-top: 20px;">Contatta l'amministratore di sistema per richiedere l'accesso.</p>
+        <div class="footer">COMMY &mdash; Comacchio Foundry</div>
+    </div>
+</body>
+</html>

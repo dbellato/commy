@@ -10,7 +10,10 @@ import subprocess
 
 from typing import Dict
 
+import asyncio
+
 import fastapi
+import pyodbc
 from fastapi import Request, Depends
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from azure.identity.aio import DefaultAzureCredential
@@ -24,37 +27,45 @@ from .search_index_manager import SearchIndexManager
 from .search_sql_manager import SqlSearchManager
 from azure.core.exceptions import HttpResponseError
 from .search_index_manager import SpecsSearchResult
-
-
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from typing import Optional
-import secrets
-
-security = HTTPBasic()
 
 
-username = os.getenv("WEB_APP_USERNAME")
-password = os.getenv("WEB_APP_PASSWORD")
-basic_auth = username and password
+class UnauthorizedException(Exception):
+    def __init__(self, email: str | None = None):
+        self.email = email
 
-def authenticate(credentials: Optional[HTTPBasicCredentials] = Depends(security)) -> None:
 
-    if not basic_auth:
-        logger.info("Skipping authentication: WEB_APP_USERNAME or WEB_APP_PASSWORD not set.")
-        return
-    
-    correct_username = secrets.compare_digest(credentials.username, username)
-    correct_password = secrets.compare_digest(credentials.password, password)
-    if not (correct_username and correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return
+def _check_email_in_db(conn_str: str, email: str) -> bool:
+    """Synchronous DB lookup – run in a thread pool."""
+    try:
+        with pyodbc.connect(conn_str, timeout=5) as conn:
+            row = conn.cursor().execute(
+                "SELECT 1 FROM dbo.users WHERE email = ?", email
+            ).fetchone()
+            return row is not None
+    except Exception as e:
+        # Log lazily (logger not yet available at import time)
+        return False
 
-auth_dependency = Depends(authenticate) if basic_auth else None
+
+async def get_authorized_user(request: Request) -> str:
+    """Dependency: resolve the caller's email and verify it exists in dbo.users."""
+    # Azure Easy Auth injects this header after the user logs in via Entra ID.
+    # For local development, set DEV_USER_EMAIL in your .env file.
+    email = (
+        request.headers.get("X-MS-CLIENT-PRINCIPAL-NAME")
+        or os.getenv("DEV_USER_EMAIL")
+    )
+    if not email:
+        raise UnauthorizedException()
+
+    conn_str = getattr(request.app.state, "auth_conn_str", None)
+    if conn_str:
+        authorized = await asyncio.to_thread(_check_email_in_db, conn_str, email)
+        if not authorized:
+            raise UnauthorizedException(email)
+
+    return email
 
 logger = get_logger(
     name="COMMY_routes",
@@ -71,7 +82,7 @@ _BLOB_ROTARIES_CONTAINER = "rotaries"
 
 
 @router.get("/blob/rotaries/{filename}")
-async def get_rotaries_blob(filename: str, _ = auth_dependency):
+async def get_rotaries_blob(filename: str, _user: str = Depends(get_authorized_user)):
     """Proxy for Azure Blob Storage rotaries container (no public access)."""
     credential = DefaultAzureCredential()
     try:
@@ -238,7 +249,7 @@ def is_widget_payload(x) -> bool:
     )
 
 @router.get("/", response_class=HTMLResponse)
-async def index_name(request: Request, _ = auth_dependency):
+async def index_name(request: Request, _user: str = Depends(get_authorized_user)):
     return templates.TemplateResponse(
         "index.html", 
         {
@@ -288,7 +299,7 @@ async def chat_stream_handler(
     manuals_search_index_manager: SearchIndexManager = Depends(get_manuals_search_index_manager),
     specs_search_index_manager: SearchIndexManager = Depends(get_specs_search_index_manager),
     search_sql_manager: SqlSearchManager | None = Depends(get_sql_search_manager),
-    _ = auth_dependency
+    _user: str = Depends(get_authorized_user),
 ) -> fastapi.responses.StreamingResponse:
     
     headers = {
